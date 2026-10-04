@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Snake Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS for a retro arcade feel with vibrant neon colors */
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background-color: #12002f; /* Dark Violet for deeper contrast */
+            color: #ffffff; /* White/Bright text */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 15px;
+            border: 5px solid #ff0077; /* Hot Pink Neon Border */
+            box-shadow: 0 0 25px rgba(255, 0, 119, 0.8); /* Hot Pink Glow */
+            border-radius: 12px;
+            background-color: #05001a; /* Very dark inner background */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #score-board {
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.1rem;
+            color: #ffcc00; /* Vibrant Yellow Score */
+        }
+
+        #gameCanvas {
+            border: 4px solid #00ffcc; /* Aqua Neon Border */
+            background-color: #12002f;
+            box-shadow: inset 0 0 15px rgba(0, 255, 204, 0.6);
+            touch-action: none; /* Prevent browser scrolling/zooming on canvas touch */
+        }
+
+        .game-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 25px 35px;
+            border: 3px solid #ff0077;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
+            color: #00ffcc; /* Aqua text in message box */
+        }
+
+        .game-message button {
+            background-color: #00ffcc; /* Aqua Button */
+            color: #12002f;
+            border: none;
+            padding: 12px 24px;
+            margin-top: 20px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            box-shadow: 0 5px 0 #009999; /* Darker aqua shadow */
+            -webkit-tap-highlight-color: transparent; /* Remove mobile tap highlight */
+        }
+
+        .game-message button:hover {
+            background-color: #66ffff;
+            box-shadow: 0 3px 0 #009999;
+            transform: translateY(2px);
+        }
+
+        .controls-info {
+            font-size: 0.7rem;
+            margin-top: 15px;
+            color: #ff9900; /* Vibrant Orange for info */
+            text-align: center;
+        }
+
+        /* --- New Button/Control Styles --- */
+
+        .directional-controls {
+            display: grid;
+            grid-template-areas: ". up ." "left center right" ". down .";
+            width: 200px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            user-select: none; /* Prevent selection on tap */
+        }
+
+        .dir-button {
+            background-color: #1f005c; /* Darker control background */
+            color: #ff0077; /* Hot Pink Arrows */
+            border: 2px solid #ff0077;
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.8rem;
+            border-radius: 8px;
+            box-shadow: 0 3px 0 #8c0042;
+            transition: all 0.1s;
+            line-height: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 40px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .dir-button:active {
+            box-shadow: 0 1px 0 #8c0042;
+            transform: translateY(2px);
+            background-color: #2e007d;
+        }
+
+        #up-btn { grid-area: up; }
+        #down-btn { grid-area: down; }
+        #left-btn { grid-area: left; }
+        #right-btn { grid-area: right; }
+        #center-pad { grid-area: center; visibility: hidden; } /* Placeholder for center */
+
+        /* Speed Selector Styling */
+        #speed-selector-container {
+            margin-bottom: 10px;
+            color: #00ffcc;
+            font-size: 0.8rem;
+        }
+
+        #speedSelector {
+            background-color: #05001a;
+            border: 2px solid #00ffcc;
+            color: #ffcc00;
+            padding: 5px 10px;
+            margin-left: 10px;
+            border-radius: 5px;
+            font-family: 'Press Start 2P', monospace;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+
+
+        /* Adjust font size for responsiveness on smaller screens */
+        @media (max-width: 600px) {
+            #score-board {
+                font-size: 0.9rem;
+            }
+            .controls-info {
+                font-size: 0.6rem;
+            }
+            .directional-controls {
+                width: 150px; /* Make controls slightly smaller for mobile */
+            }
+            .dir-button {
+                height: 35px;
+            }
+            #speed-selector-container {
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="score-board">Score: <span id="currentScore">0</span> | High Score: <span id="highScore">0</span></div>
+        
+        <!-- Speed Selector -->
+        <div id="speed-selector-container">
+            Difficulty:
+            <select id="speedSelector">
+                <option value="200">Easy</option>
+                <option value="150" selected>Medium</option>
+                <option value="100">Hard</option>
+                <option value="70">Insane</option>
+            </select>
+        </div>
+
+        <div class="relative">
+            <canvas id="gameCanvas" width="400" height="400"></canvas>
+            
+            <!-- Game Messages/Start Screen -->
+            <div id="messageBox" class="game-message">
+                <h2 id="messageTitle" class="text-xl mb-3">SNAKE</h2>
+                <p id="messageText" class="text-sm">Select difficulty and hit start!</p>
+                <button id="startButton">Start Game</button>
+            </div>
+        </div>
+
+        <!-- Directional Buttons for Touchscreens -->
+        <div class="directional-controls">
+            <button id="up-btn" class="dir-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+            <div id="center-pad"></div>
+            <button id="left-btn" class="dir-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            </button>
+            <button id="right-btn" class="dir-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+            <button id="down-btn" class="dir-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+            </button>
+        </div>
+
+        <div class="controls-info">
+            Keyboard (Arrows) or On-screen Buttons/Swipe (Touch)
+        </div>
+    </div>
+
+    <script>
+        // --- Game Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('currentScore');
+        const highScoreElement = document.getElementById('highScore');
+        const messageBox = document.getElementById('messageBox');
+        const messageTitle = document.getElementById('messageTitle');
+        const messageText = document.getElementById('messageText');
+        const startButton = document.getElementById('startButton');
+        const speedSelector = document.getElementById('speedSelector');
+        
+        // Directional Buttons
+        const upBtn = document.getElementById('up-btn');
+        const downBtn = document.getElementById('down-btn');
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+
+
+        // Game Constants
+        const TILE_SIZE = 20;
+        const GRID_SIZE = canvas.width / TILE_SIZE; // 400 / 20 = 20
+
+        // Game State
+        let snake = [];
+        let food = {};
+        let direction = { x: TILE_SIZE, y: 0 }; // Start moving right
+        let nextDirection = { x: TILE_SIZE, y: 0 };
+        let score = 0;
+        let gameLoopTimeout;
+        let gameSpeed = 150; // Current speed in milliseconds
+        let isRunning = false;
+        let touchStartX, touchStartY;
+        let touchBuffer = []; // Buffer to handle multiple quick inputs
+
+        // Initialize High Score from local storage
+        let highScore = localStorage.getItem('snakeHighScore') || 0;
+        highScoreElement.textContent = highScore;
+
+        // --- Core Functions ---
+
+        function initGame() {
+            // Read initial speed from selector (value is in ms)
+            const initialSpeed = parseInt(speedSelector.value, 10);
+
+            // Reset state
+            score = 0;
+            scoreElement.textContent = score;
+            snake = [
+                { x: 4 * TILE_SIZE, y: 2 * TILE_SIZE },
+                { x: 3 * TILE_SIZE, y: 2 * TILE_SIZE },
+                { x: 2 * TILE_SIZE, y: 2 * TILE_SIZE }
+            ];
+            direction = { x: TILE_SIZE, y: 0 };
+            nextDirection = { x: TILE_SIZE, y: 0 };
+            gameSpeed = initialSpeed; // Set initial speed based on selector
+            isRunning = true;
+            touchBuffer = [];
+            
+            // Disable selector during game
+            speedSelector.disabled = true;
+
+            generateFood();
+            messageBox.style.display = 'none';
+
+            if (gameLoopTimeout) clearTimeout(gameLoopTimeout);
+            gameLoop();
+        }
+
+        function generateFood() {
+            let newFood;
+            do {
+                newFood = {
+                    x: Math.floor(Math.random() * GRID_SIZE) * TILE_SIZE,
+                    y: Math.floor(Math.random() * GRID_SIZE) * TILE_SIZE
+                };
+            } while (isOccupiedBySnake(newFood));
+            food = newFood;
+        }
+
+        function isOccupiedBySnake(point) {
+            return snake.some(segment => segment.x === point.x && segment.y === point.y);
+        }
+
+        function drawGame() {
+            // 1. Clear Canvas (Game background - Dark Violet)
+            ctx.fillStyle = '#12002f'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Draw Food (Vibrant Yellow)
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillRect(food.x, food.y, TILE_SIZE, TILE_SIZE);
+            
+            // 3. Draw Snake
+            snake.forEach((segment, index) => {
+                // Head is bright Aqua, body is a darker Aqua
+                ctx.fillStyle = index === 0 ? '#00ffcc' : '#009999'; 
+                ctx.fillRect(segment.x, segment.y, TILE_SIZE, TILE_SIZE);
+                
+                // Draw a simple eye for the head
+                if (index === 0) {
+                    ctx.fillStyle = '#ff0077'; // Pink eye
+                    let eyeX = segment.x + TILE_SIZE / 4;
+                    let eyeY = segment.y + TILE_SIZE / 4;
+                    
+                    // Simple logic to place the eye on the moving side
+                    if (direction.x > 0) eyeX = segment.x + TILE_SIZE * 0.6; // Right
+                    if (direction.x < 0) eyeX = segment.x + TILE_SIZE * 0.15; // Left
+                    if (direction.y > 0) eyeY = segment.y + TILE_SIZE * 0.6; // Down
+                    if (direction.y < 0) eyeY = segment.y + TILE_SIZE * 0.15; // Up
+                    
+                    ctx.fillRect(eyeX, eyeY, TILE_SIZE / 5, TILE_SIZE / 5);
+                }
+
+                // Add a small inner shadow/glow for effect
+                ctx.strokeStyle = '#333';
+                ctx.strokeRect(segment.x, segment.y, TILE_SIZE, TILE_SIZE);
+            });
+        }
+
+        function updateGame() {
+            if (!isRunning) return;
+
+            // Apply direction from buffer
+            if (touchBuffer.length > 0) {
+                direction = touchBuffer.shift();
+                nextDirection = direction; // Clear the next direction after applying
+            } else {
+                direction = nextDirection;
+            }
+
+            // Create new head position
+            const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+            // 1. Collision Check
+            if (
+                head.x < 0 || head.x >= canvas.width || // Wall collision
+                head.y < 0 || head.y >= canvas.height ||
+                isOccupiedBySnake(head) // Self collision
+            ) {
+                gameOver();
+                return;
+            }
+
+            // Add new head
+            snake.unshift(head);
+
+            // 2. Eating Food Check
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreElement.textContent = score;
+                
+                // Increase speed slightly (min speed 50ms)
+                if (gameSpeed > 50) {
+                    // Speed up 5ms per score point
+                    gameSpeed = Math.max(50, gameSpeed - 5); 
+                }
+                
+                generateFood(); // New food, snake length remains +1 from unshift
+            } else {
+                // Remove tail if no food was eaten
+                snake.pop();
+            }
+
+            drawGame();
+            
+            // Continue the loop
+            gameLoopTimeout = setTimeout(updateGame, gameSpeed);
+        }
+
+        function gameLoop() {
+            // This function acts as the scheduler for the updateGame loop
+            updateGame();
+        }
+
+        function gameOver() {
+            isRunning = false;
+            clearTimeout(gameLoopTimeout);
+            
+            // Re-enable selector after game over
+            speedSelector.disabled = false;
+
+            // Update high score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('snakeHighScore', highScore);
+                highScoreElement.textContent = highScore;
+
+                messageTitle.textContent = 'NEW HIGH SCORE!';
+                messageText.textContent = `You scored ${score}!`;
+            } else {
+                messageTitle.textContent = 'GAME OVER';
+                messageText.textContent = `Your Score: ${score}. Try again!`;
+            }
+            
+            startButton.textContent = 'Play Again';
+            messageBox.style.display = 'block';
+        }
+
+        // --- Input Handlers ---
+
+        function setDirection(newDir) {
+            // Check if the proposed direction is a valid turn (not 180 degrees)
+            if (newDir.x + direction.x !== 0 || newDir.y + direction.y !== 0) {
+                nextDirection = newDir;
+                touchBuffer.push(newDir);
+                if (touchBuffer.length > 2) touchBuffer.shift(); 
+            }
+        }
+
+        function handleKeyboardInput(e) {
+            if (!isRunning) return;
+
+            switch (e.key) {
+                case 'ArrowUp':
+                    setDirection({ x: 0, y: -TILE_SIZE });
+                    break;
+                case 'ArrowDown':
+                    setDirection({ x: 0, y: TILE_SIZE });
+                    break;
+                case 'ArrowLeft':
+                    setDirection({ x: -TILE_SIZE, y: 0 });
+                    break;
+                case 'ArrowRight':
+                    setDirection({ x: TILE_SIZE, y: 0 });
+                    break;
+            }
+        }
+        
+        function handleButtonInput(dir) {
+             if (!isRunning) return;
+             
+             // The check for 180 degree turn is now handled inside setDirection
+             setDirection(dir);
+        }
+
+
+        // --- Touch/Swipe Controls (unchanged) ---
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent scrolling
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (!isRunning || typeof touchStartX === 'undefined') return;
+
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+            
+            const minSwipeDistance = 20;
+            let newDir = null;
+
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > minSwipeDistance) {
+                // Horizontal swipe
+                newDir = dx > 0 ? { x: TILE_SIZE, y: 0 } : { x: -TILE_SIZE, y: 0 };
+            } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > minSwipeDistance) {
+                // Vertical swipe
+                newDir = dy > 0 ? { x: 0, y: TILE_SIZE } : { x: 0, y: -TILE_SIZE };
+            }
+
+            if (newDir) {
+                setDirection(newDir);
+            }
+
+            touchStartX = undefined;
+            touchStartY = undefined;
+        });
+        
+        // --- Event Listeners ---
+        window.addEventListener('keydown', handleKeyboardInput);
+        startButton.addEventListener('click', initGame);
+
+        // Button Click/Touch Handlers
+        upBtn.addEventListener('click', () => handleButtonInput({ x: 0, y: -TILE_SIZE }));
+        downBtn.addEventListener('click', () => handleButtonInput({ x: 0, y: TILE_SIZE }));
+        leftBtn.addEventListener('click', () => handleButtonInput({ x: -TILE_SIZE, y: 0 }));
+        rightBtn.addEventListener('click', () => handleButtonInput({ x: TILE_SIZE, y: 0 }));
+        
+
+        // Initial drawing of the empty board
+        drawGame(); 
+
+    </script>
+</body>
+</html>
